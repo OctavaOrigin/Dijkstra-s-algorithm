@@ -85,6 +85,7 @@ function MakeVertixArray(array = global.cellsArray){
 	return vArray;
 }
 
+/*
 function DeikstraAlgorithm(array){
 	var S = array_create(0);
 	array_push(S, 0);
@@ -125,6 +126,34 @@ function DeikstraAlgorithm(array){
 	
 	return pArray;
 }
+*/
+
+function new_DijkstraAlgo(vArray){
+	var vDist = array_create(array_length(vArray), infinity);
+	var usedV = array_create(array_length(vArray), false);
+	var pArray = array_create(array_length(vArray), 0);
+	vDist[0] = 0;
+	for (var i = 0; i < array_length(vDist); i++){
+		var v = noone;
+		for (var j = 0; j < array_length(vDist); j++){
+			if (!usedV[j]) && (v == noone || vDist[j] < vDist[v]){
+				v = j;
+			}
+		}
+		usedV[v] = true;
+		for (var l = 0; l < array_length(vDist); l++){
+			if (usedV[l]) continue;
+			if (collision_line(vArray[v].x, vArray[v].y,vArray[l].x, vArray[l].y, obj_wallObj, false, true))
+				continue;
+			var dist = point_distance(vArray[v].x, vArray[v].y,vArray[l].x, vArray[l].y);
+			if ((dist + vDist[v]) < vDist[l]){
+				vDist[l] = dist + vDist[v];
+				pArray[l] = v;
+			}
+		}
+	}
+	return pArray;
+}
 
 
 function GetAPath(pArray, vArray){
@@ -162,13 +191,14 @@ function Print1DMArray(array){
 
 
 
-function PathFindingWithDiikstraAlgo(){
+function PathFindingWithDijkstraAlgo(){
 	FillTheMapArray();	
 
 	FindAdgesOnMapArray();
 	var vArray = MakeVertixArray();
 	
-	var pArray = DeikstraAlgorithm(vArray);
+	//var pArray = DeikstraAlgorithm(vArray);
+	var pArray = new_DijkstraAlgo(vArray);
 	var path = GetAPath(pArray, vArray);
 	
 	return path;
