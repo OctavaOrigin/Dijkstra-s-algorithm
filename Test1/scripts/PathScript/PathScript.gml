@@ -44,15 +44,33 @@ function FindAdgesOnMapArray(array = global.cellsArray){
 	for (var i = 1; i < array_length(array)-1; i++){
 		for (var j = 1; j < array_length(array[0])-1; j++){
 			if (array[i][j] == 1 && TouchingAdgesAmount(i,j) == 2){
-				if (array[i-1][j] == 0)
+				if (array[i-1][j] == 0 || array[i-1][j] == 2){
 					array[i-1][j] = 2;
-				if (array[i+1][j] == 0)
-					array[i+1][j] = 2
-				if (array[i][j-1] == 0)
+					var obj = instance_create_depth((i+1)*32,(j+1)*32, 1, obj_wallObj_invisible_right);
+					obj.image_angle += 180;
+					obj.y += 1;
+					obj.visible = false;
+				}
+				if (array[i+1][j] == 0 || array[i+1][j] == 2){
+					array[i+1][j] = 2;
+					var obj = instance_create_depth((i+1)*32,(j+1)*32, 1, obj_wallObj_invisible_right);
+					obj.visible = false;
+				}
+				if (array[i][j-1] == 0 || array[i][j-1] == 2){
 					array[i][j-1] = 2;
-				if (array[i][j+1] == 0)
+					var obj = instance_create_depth((i+1)*32,(j+1)*32, 1, obj_wallObj_invisible_right);
+					obj.image_angle += 90;
+					obj.visible = false;
+				}
+				if (array[i][j+1] == 0 || array[i][j+1] == 2){
 					array[i][j+1] = 2;
+					var obj = instance_create_depth((i+1)*32,(j+1)*32, 1, obj_wallObj_invisible_right);
+					obj.image_angle -= 90;
+					obj.x += 1;
+					obj.visible = false;
+				}
 			}
+			
 		}
 	}
 }
@@ -82,53 +100,11 @@ function MakeVertixArray(array = global.cellsArray){
 		}
 	}
 	array_push(vArray, new Vector2(obj_finish.x+32, obj_finish.y+32));
+	
 	return vArray;
 }
 
-/*
-function DeikstraAlgorithm(array){
-	var S = array_create(0);
-	array_push(S, 0);
-	var D = array_create(array_length(array), infinity);
-	D[0] = 0;
-	var currentID = 0;
-	var minDist = infinity;
-	var minDistID = 0;
-	var noCheck = false;
-	var pArray = array_create(array_length(array), 0);
-	for (var i = 0; i < array_length(array)-1; i++){
-		for (var j = 0; j < array_length(D); j++){
-			noCheck = false;
-			for (var l = 0; l < array_length(S); l++){
-				if (S[l] == j){
-					noCheck = true;
-				}
-			}
-			if (!noCheck){
-				if (!collision_line(array[currentID].x, array[currentID].y,array[j].x, array[j].y, obj_wallObj, false, true)){
-					var dist = point_distance(array[currentID].x, array[currentID].y,array[j].x, array[j].y);
-					dist += D[currentID];
-					if (dist < D[j]){
-						D[j] = dist;
-						pArray[j] = currentID;
-					}
-				}
-				if (D[j] < minDist){
-					minDist = D[j];
-					minDistID = j;
-				}
-			}
-		}
-		currentID = minDistID;
-		array_push(S, currentID);
-		minDist = infinity;
-	}
-	
-	return pArray;
-}
-*/
-
-function new_DijkstraAlgo(vArray){
+function new_DijkstraAlgo(vArray, nArray){
 	var vDist = array_create(array_length(vArray), infinity);
 	var usedV = array_create(array_length(vArray), false);
 	var pArray = array_create(array_length(vArray), 0);
@@ -141,14 +117,15 @@ function new_DijkstraAlgo(vArray){
 			}
 		}
 		usedV[v] = true;
-		for (var l = 0; l < array_length(vDist); l++){
-			if (usedV[l]) continue;
-			if (collision_line(vArray[v].x, vArray[v].y,vArray[l].x, vArray[l].y, obj_wallObj, false, true))
-				continue;
-			var dist = point_distance(vArray[v].x, vArray[v].y,vArray[l].x, vArray[l].y);
-			if ((dist + vDist[v]) < vDist[l]){
-				vDist[l] = dist + vDist[v];
-				pArray[l] = v;
+		
+		for (var k = 0; k < array_length(nArray[v].vArray); k++){
+			var curObj = nArray[v].vArray[k];
+			if (usedV[curObj.obj_id]) continue;
+			
+			var dist = point_distance(vArray[v].x, vArray[v].y, curObj.x, curObj.y);
+			if ((dist + vDist[v]) < vDist[curObj.obj_id]){
+				vDist[curObj.obj_id] = dist + vDist[v];
+				pArray[curObj.obj_id] = v;
 			}
 		}
 	}
@@ -188,17 +165,34 @@ function Print1DMArray(array){
 }
 
 
+function DijkstraAlgoPrep(){
+	FillTheMapArray();	
+	FindAdgesOnMapArray();
+}
 
-
+function CreateNodeArray(vArray){
+	var nArray = array_create(0);
+	for (var i = 0; i < array_length(vArray); i++){
+		array_push(nArray, new NodeMain(vArray[i].x, vArray[i].y, i));
+		for (var j = 0; j < array_length(vArray); j++){
+			if (i == j) continue;
+			if (collision_line(vArray[i].x, vArray[i].y, vArray[j].x, vArray[j].y, obj_wallObj, false, true) ||
+				collision_line(vArray[i].x, vArray[i].y, vArray[j].x, vArray[j].y, obj_wallObj_invisible_right, false, true)){
+					continue;
+				}
+			nArray[i].Add(new Node(vArray[j].x, vArray[j].y, j));
+		}
+	}
+	
+	return nArray;
+}
 
 function PathFindingWithDijkstraAlgo(){
-	FillTheMapArray();	
-
-	FindAdgesOnMapArray();
-	var vArray = MakeVertixArray();
 	
-	//var pArray = DeikstraAlgorithm(vArray);
-	var pArray = new_DijkstraAlgo(vArray);
+	var vArray = MakeVertixArray();
+	var nArray = CreateNodeArray(vArray);
+	
+	var pArray = new_DijkstraAlgo(vArray, nArray);
 	var path = GetAPath(pArray, vArray);
 	
 	return path;
